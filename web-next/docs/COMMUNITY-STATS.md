@@ -1,0 +1,11 @@
+# Homepage community metrics
+
+`GET /api/community/stats` returns aggregate registered-account count, website-online count (five-minute window) and up to eight explicitly opted-in GitHub profiles. No per-user online state, exact last-seen timestamp, subject, email, IP, token or repository is returned. Public results may be cached for 15 seconds; homepage refresh is every 30 seconds while visible.
+
+`POST /api/community/presence` requires a signed GitHub browser identity and matching Origin. Device bearer tokens and admin identities are not accepted. A visible dashboard sends a heartbeat once per minute, including before repository installation; the API uses server time. Hidden tabs do not send heartbeats. `show_profile` is the only accepted optional field. The subject, GitHub ID and login always come from the signed identity, never the body. Updates are capped at 30/minute per subject.
+
+`community_members` stores only the GitHub identity, first-recorded time, last website-presence time and opt-in preference. A unique primary key prevents multiple tabs from increasing user counts. Public photo/name display is OFF by default, and the dashboard disclosure can enable or disable it. Opt-out can take up to one minute to reflect across the homepage cache and polling. This choice does not affect RDP access. On failed preference writes, the checkbox reverts and reports an error.
+
+Counts are **known unique GitHub accounts**, not all-time historical OAuth logins, page views, real human counts or RDP-session counts. Migration backfills known personal accounts from app_installations/repositories with last_seen=0 and show_profile=0. Old login-only accounts without a database record appear when they next open the dashboard. Signed-out visitors and the service admin are not counted as online users. A last-seen value within five minutes remains online until it ages out, even after logout.
+
+If the stats API fails, the homepage shows a dash and unavailable message, not invented counts. If no one has opted in, the avatar row is not shown. Browser screenshot tests use mock profiles/counts, never production inserts. All other synthetic-login browser tests must intercept the presence endpoint to avoid polluting live statistics.

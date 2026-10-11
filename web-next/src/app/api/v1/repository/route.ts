@@ -1,0 +1,3 @@
+import {NextRequest} from "next/server";
+import {context,guarded,reply,gh,ApiError} from "@/lib/api";
+export async function GET(req:NextRequest){return guarded(async()=>{const c=await context(req);if(req.nextUrl.searchParams.has("path")){const path=req.nextUrl.searchParams.get("path")||"";if(path.length>1000||path.split("/").some(p=>p===".."||p===".")||/[\x00-\x1f]/.test(path))throw new ApiError(400,"Path tidak valid");const d=await gh(c,"/contents/"+path.split("/").map(encodeURIComponent).join("/"));return reply({repo:c.repo,data:d})}const r=await gh(c,"");return reply({repo:c.repo,default_branch:r.default_branch,private:r.private,html_url:r.html_url,permissions:r.permissions})})}

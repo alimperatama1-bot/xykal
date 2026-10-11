@@ -1,0 +1,7 @@
+import type {Metadata} from "next";
+import "./globals.css";
+import {headers,cookies} from "next/headers";
+import LocaleProvider,{LanguageSwitcher} from "./locale-provider";
+import {preferredLocale} from "@/lib/i18n/locale";
+export const metadata:Metadata={icons:{icon:[{url:"/favicon.svg",type:"image/svg+xml"},{url:"/favicon.ico",sizes:"any"}],apple:"/apple-touch-icon.png"},metadataBase:new URL("https://rdpfree.projectkal.my.id"),title:{default:"RdpFree — Desktop kamu, dari mana saja",template:"%s · RdpFree"},description:"Buat repository dari template XyRDP, atur sesi Windows, dan hubungkan melalui XyDesk Remote.",openGraph:{type:"website",locale:"id_ID",siteName:"RdpFree",title:"RdpFree — Desktop kamu, dari mana saja",description:"Template XyRDP, pengaturan sesi, dan koneksi XyDesk Remote dalam satu dashboard.",url:"https://rdpfree.projectkal.my.id",images:[{url:"/og-rdpfree.jpg?v=2",width:1200,height:630,alt:"RdpFree — monitor desktop dengan ilustrasi cloud hijau"}]},twitter:{card:"summary_large_image",title:"RdpFree — Desktop kamu, dari mana saja",images:["/og-rdpfree.jpg?v=2"]}};
+export default async function Layout({children}:{children:React.ReactNode}){const lang=preferredLocale((await cookies()).get("rdpfree_locale")?.value,(await headers()).get("accept-language"));return <html lang={lang}><body><LocaleProvider initialLocale={lang}>{children}<div className="global-language"><LanguageSwitcher/></div></LocaleProvider></body></html>}

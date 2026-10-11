@@ -1,0 +1,4 @@
+import {getCloudflareContext} from "@opennextjs/cloudflare";
+interface Statement {bind(...v:unknown[]):Statement;first<T=Record<string,unknown>>():Promise<T|null>;all<T=Record<string,unknown>>():Promise<{results:T[]}>;run():Promise<{meta:{changes:number}}>}
+export function db(){return (getCloudflareContext().env as unknown as {DB:{prepare(sql:string):Statement}}).DB;}
+export async function rateLimit(key:string,max:number,seconds:number){const now=Math.floor(Date.now()/1000);const r=await db().prepare("INSERT INTO rate_limits(key,count,expires) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN expires<=? THEN 1 ELSE count+1 END,expires=CASE WHEN expires<=? THEN excluded.expires ELSE expires END RETURNING count").bind(key,now+seconds,now,now).first<{count:number}>();return !!r&&r.count<=max;}

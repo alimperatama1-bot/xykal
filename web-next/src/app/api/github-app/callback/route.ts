@@ -1,0 +1,6 @@
+import {NextRequest,NextResponse} from "next/server";
+import {identity} from "@/lib/identity";
+import {consumeState,verifyInstallation,SITE} from "@/lib/github-app";
+import {guarded,ApiError} from "@/lib/api";
+import {db} from "@/lib/db";
+export async function GET(req:NextRequest){return guarded(async()=>{const who=await identity(req);if(who.kind!=="user")throw new ApiError(403,"Login identitas GitHub diperlukan");const state=req.nextUrl.searchParams.get("state")||"",raw=req.nextUrl.searchParams.get("installation_id")||"";if(!state||state!==req.cookies.get("rdpfree-install-state")?.value||!/^\d+$/.test(raw))throw new ApiError(403,"Mulai instalasi dari tombol Hubungkan repository di dashboard");await consumeState(state,who.subject,"install");const info=await verifyInstallation(Number(raw),who.id);await db().prepare("INSERT INTO app_installations(subject,installation_id,account_id,login,updated) VALUES(?,?,?,?,?) ON CONFLICT(subject) DO UPDATE SET installation_id=excluded.installation_id,account_id=excluded.account_id,login=excluded.login,updated=excluded.updated").bind(who.subject,info.id,String(info.account.id),info.account.login,Date.now()).run();const response=NextResponse.redirect(SITE+"/dashboard/connection");response.cookies.delete("rdpfree-install-state");return response})}

@@ -1,0 +1,321 @@
+# rdpfree-workflow-schema: 3
+# XyVerse wallpaper is automatic, using the original repository asset.
+name: RdpFree — RDP 6 Jam
+'on':
+  workflow_dispatch:
+    inputs:
+      durasi_menit:
+        description: Durasi sesi (menit). 6 jam pas = 360
+        required: false
+        default: '360'
+        type: choice
+        options:
+        - '15'
+        - '30'
+        - '60'
+        - '120'
+        - '180'
+        - '240'
+        - '300'
+        - '330'
+        - '360'
+      hostname:
+        description: 'Hostname sesi (dapat suffix nomor run, mis: xyrdp-42)'
+        required: false
+        default: rdpfree
+        type: string
+      rdp_user:
+        description: Username login RDP (3–20 karakter, huruf/angka/_/-)
+        required: false
+        default: xyadmin
+        type: string
+      akses:
+        description: Akses privat Tailscale. HP/PC harus berada di tailnet yang sama.
+        required: false
+        default: tailscale
+        type: choice
+        options:
+        - tailscale
+      storage_boost:
+        description: ' Storage Boost: bebaskan 45-75GB (70GB -> 120GB+ free) dengan hapus Android/Haskell/CodeQL/cache'
+        required: false
+        default: ya
+        type: choice
+        options:
+        - ya
+        - tidak
+      debloat:
+        description: ' Debloat: hapus app bawaan gede (ringan=OneDrive/Xbox/Appx, full=+Edge ~1.5GB). Edge dihapus
+          hanya jika Chrome ada'
+        required: false
+        default: ringan
+        type: choice
+        options:
+        - ringan
+        - full
+        - tidak
+      samp:
+        description: ' GTA SAMP: pasang SA-MP client + dependensi DirectX/VC++ (butuh GTA_SA_URL atau upload manual)'
+        required: false
+        default: tidak
+        type: choice
+        options:
+        - ya
+        - tidak
+      samp_extra:
+        description: ' Extra SAMP: SilentPatch + WidescreenFix (rekomendasi ya untuk SAMP)'
+        required: false
+        default: tidak
+        type: choice
+        options:
+        - ya
+        - tidak
+      gta_sa_url:
+        description: (OPSIONAL) URL direct ZIP GTA SA portable milikmu (Google Drive direct / Dropbox / S3). Kosong
+          = upload manual via RDP
+        required: false
+        default: ''
+        type: string
+      win10:
+        description: Tweak tampilan Windows 10 (Server Manager mati, personalisasi, wallpaper, label)
+        required: false
+        default: ya
+        type: choice
+        options:
+        - ya
+        - tidak
+      xydesk:
+        description: Host setup XyDesk Remote (AVC444 + ClearType + multi-session + audio/mic + UDP 4433)
+        required: false
+        default: ya
+        type: choice
+        options:
+        - ya
+        - tidak
+      ekstra:
+        description: 'Ekstra otomatis: Lightshot + wallpaper + taskbar translucent'
+        required: false
+        default: ya
+        type: choice
+        options:
+        - ya
+        - tidak
+      grafis:
+        description: 'GPU software: Mesa3D llvmpipe (OpenGL 4.5+/4.6) + lavapipe Vulkan — WAJIB ya untuk GTA SAMP'
+        required: false
+        default: software
+        type: choice
+        options:
+        - software
+        - tidak
+      runner:
+        description: GitHub untuk pengujian software; games hanya di mesin Windows self-hosted khusus milikmu
+        required: false
+        default: github
+        type: choice
+        options:
+        - github
+        - self-hosted
+      microphone:
+        description: Izinkan input mikrofon melalui kanal RDP (klien tetap meminta izin Android)
+        required: false
+        default: ya
+        type: choice
+        options:
+        - ya
+        - tidak
+      roblox:
+        description: Siapkan installer resmi Roblox di mesin self-hosted; VM dapat ditolak game
+        required: false
+        default: tidak
+        type: choice
+        options:
+        - ya
+        - tidak
+      minecraft_java:
+        description: Siapkan launcher Minecraft Java resmi di mesin self-hosted
+        required: false
+        default: tidak
+        type: choice
+        options:
+        - ya
+        - tidak
+      minecraft_bedrock:
+        description: Periksa dukungan Store Minecraft Bedrock pada Windows desktop self-hosted
+        required: false
+        default: tidak
+        type: choice
+        options:
+        - ya
+        - tidak
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: xyrdp
+  cancel-in-progress: false
+jobs:
+  rdp:
+    runs-on: ${{ inputs.runner == 'self-hosted' && fromJSON('["self-hosted","Windows","X64","rdpfree"]') || 'windows-2022'
+      }}
+    timeout-minutes: 360
+    env:
+      DUR: ${{ inputs.durasi_menit }}
+      HOSTNAME: ${{ inputs.hostname }}
+      AKSES: tailscale
+      WIN10: ${{ inputs.win10 }}
+      XYDESK: ${{ inputs.xydesk }}
+      EXTRAS: ${{ inputs.ekstra }}
+      GRAFIS: ${{ inputs.grafis }}
+      WALLPAPER_URL: ''
+      RDP_USER: ${{ inputs.rdp_user || 'xyadmin' }}
+      RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+      TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+      CLEANUP_TOKEN: ${{ secrets.CLEANUP_TOKEN }}
+      KEEP_RUNS: '3'
+      GITHUB_TOKEN: ${{ github.token }}
+      STORAGE_BOOST: ${{ inputs.storage_boost }}
+      DEBLOAT: ${{ inputs.debloat }}
+      SAMP: ${{ inputs.samp }}
+      SAMP_EXTRA: ${{ inputs.samp_extra }}
+      GTA_SA_URL: ${{ inputs.gta_sa_url }}
+      GTA_SA_URL_SECRET: ${{ secrets.GTA_SA_URL }}
+      RDPFREE_RUNNER: ${{ inputs.runner }}
+      MICROPHONE: ${{ inputs.microphone }}
+      ROBLOX: ${{ inputs.roblox }}
+      MINECRAFT_JAVA: ${{ inputs.minecraft_java }}
+      MINECRAFT_BEDROCK: ${{ inputs.minecraft_bedrock }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Info lingkungan (OS + versi + disk awal)
+      timeout-minutes: 5
+      shell: pwsh
+      run: '$os = Get-CimInstance Win32_OperatingSystem
+
+        Write-Host "[RdpFree] OS runner : $($os.Caption) build $($os.Version)"
+
+        Write-Host "[RdpFree] Storage awal:"
+
+        Get-CimInstance Win32_LogicalDisk | ForEach-Object { Write-Host "  $($_.DeviceID) $([math]::Round($_.Size/1GB,1))GB
+        total / $([math]::Round($_.FreeSpace/1GB,1))GB free" }
+
+        Write-Host "[RdpFree] Catatan: storage_boost=$env:STORAGE_BOOST samp=$env:SAMP samp_extra=$env:SAMP_EXTRA"
+
+        '
+    - name: Boost Storage (225GB -> lega 120GB+ free)
+      if: ${{ inputs.storage_boost != 'tidak' }}
+      timeout-minutes: 15
+      continue-on-error: true
+      shell: pwsh
+      run: ./scripts/optimize-storage.ps1
+    - name: Setup dasar (user admin + RDP 3389)
+      timeout-minutes: 15
+      shell: pwsh
+      run: ./scripts/setup-rdp.ps1
+    - name: Tweak tampilan Windows 10 (Server Manager, personalisasi, wallpaper)
+      if: ${{ inputs.win10 != 'tidak' }}
+      timeout-minutes: 15
+      shell: pwsh
+      run: ./scripts/setup-win10.ps1
+    - name: Host setup XyDesk Remote (AVC444 + ClearType + audio/mic + UDP 4433)
+      if: ${{ inputs.xydesk != 'tidak' }}
+      timeout-minutes: 10
+      shell: pwsh
+      run: ./scripts/setup-xydesk.ps1
+    - name: Setup grafis (GPU software - Mesa3D llvmpipe + lavapipe) — WAJIB untuk SAMP
+      if: ${{ inputs.grafis != 'tidak' }}
+      timeout-minutes: 12
+      continue-on-error: true
+      shell: pwsh
+      run: ./scripts/setup-grafis.ps1
+    - name: Setup tampilan, wallpaper, dan editor coding opsional
+      if: ${{ inputs.ekstra != 'tidak' }}
+      timeout-minutes: 20
+      continue-on-error: true
+      shell: pwsh
+      run: ./scripts/setup-extras.ps1
+    - name: Setup GTA SAMP (SA-MP + DirectX + VC++)
+      if: ${{ inputs.runner == 'self-hosted' && inputs.samp == 'ya' }}
+      timeout-minutes: 40
+      continue-on-error: true
+      shell: pwsh
+      run: '# fallback: jika input gta_sa_url kosong tapi secret GTA_SA_URL ada, pakai secret
+
+        if (-not $env:GTA_SA_URL -and $env:GTA_SA_URL_SECRET) { $env:GTA_SA_URL = $env:GTA_SA_URL_SECRET }
+
+        ./scripts/setup-samp.ps1
+
+        '
+    - name: Setup akses privat Tailscale
+      timeout-minutes: 15
+      shell: pwsh
+      run: ./scripts/setup-akses.ps1
+    - name: Wallpaper dan mikrofon sesi pengguna
+      shell: pwsh
+      timeout-minutes: 5
+      run: ./scripts/setup-media.ps1
+    - name: Persiapan game dan laporan kompatibilitas
+      shell: pwsh
+      timeout-minutes: 20
+      run: ./scripts/setup-games.ps1
+    - name: Ringkasan koneksi tanpa kredensial rahasia
+      shell: pwsh
+      run: '$st = Get-Content out/rdp-status.json -Raw | ConvertFrom-Json
+
+        Write-Host "Tailscale: $($st.akses.tailscale.ip):3389"
+
+        Write-Host "Username: $env:RDP_USER"
+
+        Write-Host ''Password tidak dicetak ke log. Gunakan password manager atau vault dashboard.''
+
+        Write-Host "Mikrofon: $($st.media.microphone) | Wallpaper: $($st.media.wallpaper)"'
+    - name: Publish status ke branch 'status'
+      continue-on-error: true
+      timeout-minutes: 10
+      shell: pwsh
+      run: ./scripts/publish-status.ps1 -Active $true
+    - name: Info SAMP & Storage akhir (ringkasan)
+      timeout-minutes: 5
+      continue-on-error: true
+      shell: pwsh
+      run: 'Write-Host "=== RINGKASAN STORAGE & SAMP ==="
+
+        Get-CimInstance Win32_LogicalDisk | ForEach-Object { Write-Host "  $($_.DeviceID) $([math]::Round($_.Size/1GB,1))GB
+        total / $([math]::Round($_.FreeSpace/1GB,1))GB free" }
+
+        if (Test-Path ''C:\Games\GTA San Andreas\gta_sa.exe'') { Write-Host "  GTA SA: ADA di C:\Games\GTA San Andreas"
+        } elseif (Test-Path ''D:\Games\GTA San Andreas\gta_sa.exe'') { Write-Host "  GTA SA: ADA di D:\Games\GTA
+        San Andreas" } else { Write-Host "  GTA SA: BELUM (upload manual / cek GTA_SA_URL)" }
+
+        if (Test-Path ''C:\Games\GTA San Andreas\samp.exe'') { Write-Host "  SAMP: ADA (samp.exe)" } elseif (Test-Path
+        ''D:\Games\GTA San Andreas\samp.exe'') { Write-Host "  SAMP: ADA di D:\Games" } else { Write-Host "  SAMP:
+        cek log setup-samp" }
+
+        $st = Get-Content out/rdp-status.json -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+
+        if ($st.storage) { Write-Host "  Storage boost: $($st.storage.before_gb)GB -> $($st.storage.after_gb)GB
+        (+$($st.storage.gained_gb)GB)" }
+
+        if ($st.samp) { Write-Host "  SAMP status: $($st.samp.status) - $($st.samp.note)" }
+
+        if ($st.akses) { Write-Host "  Tailscale: $($st.akses.tailscale.ip)" }
+
+        if ($st.akses.tailscale.ip) { Write-Host "  Tailscale: $($st.akses.tailscale.ip)" }
+
+        '
+    - name: Tahan sesi sampai durasi habis
+      shell: pwsh
+      run: ./scripts/keepalive.ps1
+    - name: Finalize (matikan akses, bersihkan status, hapus run lama)
+      if: always()
+      continue-on-error: true
+      timeout-minutes: 15
+      shell: pwsh
+      run: './scripts/publish-status.ps1 -Active $false
+
+        ./scripts/finalize-rdp.ps1
+
+        ./scripts/cleanup-actions.ps1
+
+        '

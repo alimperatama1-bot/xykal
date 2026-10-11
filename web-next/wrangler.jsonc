@@ -1,0 +1,28 @@
+{
+  "name": "rdpfree-next",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-10",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "account_id": "a678fee6e0a026ccd2fd978cdf07806a",
+  "routes": [
+    {
+      "pattern": "rdpfree.projectkal.my.id",
+      "custom_domain": true
+    }
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rdpfree-state",
+      "database_id": "5c523469-8fad-46cd-a9f6-53b202749c49"
+    }
+  ]
+}

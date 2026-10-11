@@ -1,0 +1,7 @@
+# kredensial lokal — JANGAN PERNAH di-commit ke repo publik
+web/config.json
+*.env
+out/
+node_modules/
+.vercel/
+deploy/vercel/.vercel/

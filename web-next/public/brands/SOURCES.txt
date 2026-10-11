@@ -1,0 +1,7 @@
+GitHub, workflow and server icons: GitHub Primer Octicons (MIT).
+https://github.com/primer/octicons
+Original SVGs downloaded from main/icons/{mark-github,workflow,server}-16.svg.
+Workflow and server are official GitHub UI icons, not independent product logos.
+XyVerse Technology Global: original white horizontal transparent artwork from the owner-provided brand kit.
+Source: https://drive.google.com/file/d/1MOlMpcRZ5CwJXo1Yl3xDgtkcU7jcSx-N/view
+File: 01_logo_utama/logo_utama_horizontal_transparan_putih.png. See XYVERSE-README.txt.
