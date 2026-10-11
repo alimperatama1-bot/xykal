@@ -1,0 +1,20 @@
+{
+  "lightshot": false,
+  "translucent": true,
+  "translucent_mode": "clear",
+  "wallpaper": true,
+  "wallpaper_file": "wallpaper.jpg",
+  "win10_look": true,
+  "win10_badge": true,
+  "win10_wallpaper": true,
+  "xydesk_host": true,
+  "dark_theme": true,
+  "lightweight_mode": true,
+  "vscode": false,
+  "notepadpp": false,
+  "rdp_user": "xyadmin",
+  "storage_boost": true,
+  "samp": false,
+  "samp_extra": false,
+  "debloat": "ringan"
+}
