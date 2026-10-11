@@ -1,0 +1,200 @@
+name: XyRDP - Windows 10 Style RDP 6 Jam (RustDesk / Tunnel)
+run-name: "XyRDP ${{ inputs.hostname || 'xyrdp' }} • ${{ inputs.durasi_menit || '360' }} mnt • ${{ inputs.akses || 'keduanya' }}"
+
+# ============================================================================
+#  XyRDP v2 — Windows "gaya 10" di runner GitHub, akses TANPA Tailscale dan
+#  TANPA apa pun yang di-self-host:
+#
+#   - runs-on: windows-2022  = Windows Server 2022 (build 10.0.20348) yang
+#     UI/kernel-nya SAMA dengan Windows 10 21H2, lalu di-tweak
+#     (setup-win10.ps1) supaya terasa Windows 10, bukan Server.
+#     CATATAN: runner GitHub tidak menyediakan image Windows 10 desktop;
+#     windows-2022 adalah yang paling dekat + tweak.
+#   - Akses 1: RustDesk (relay publik rs-*.rustdesk.com, gratis, tanpa VPN)
+#   - Akses 2: tunnel TCP ke port 3389 -> Remote Desktop Connection (mstsc)
+#     provider: bore.pub (tanpa akun) atau ngrok (butuh NGROK_AUTHTOKEN)
+#   - Tidak ada port publik di VM; 3389 hanya ditembus lewat tunnel/RustDesk
+#   - Sesi ditahan sampai durasi (maks 360 menit = batas keras GitHub)
+#   - Status sesi ditulis ke branch `status` -> dibaca dashboard web
+#   - Password TIDAK PERNAH masuk log/commit/file status
+# ============================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      durasi_menit:
+        description: "Durasi sesi (menit). 6 jam pas = 360"
+        required: false
+        default: "360"
+        type: choice
+        options:
+          - "15"
+          - "30"
+          - "60"
+          - "120"
+          - "180"
+          - "240"
+          - "300"
+          - "330"
+          - "360"
+      hostname:
+        description: "Hostname sesi (dapat suffix nomor run, mis: xyrdp-42)"
+        required: false
+        default: "xyrdp"
+        type: string
+      akses:
+        description: "Jalur akses: tailscale (IP 100.x, paling andal), tunnel RDP, RustDesk, atau kombinasi"
+        required: false
+        default: "keduanya"
+        type: choice
+        options:
+          - "keduanya"
+          - "tailscale"
+          - "semua"
+          - "rustdesk"
+          - "tunnel"
+      tunnel_provider:
+        description: "Provider tunnel RDP (kalau akses pakai tunnel)"
+        required: false
+        default: "otomatis"
+        type: choice
+        options:
+          - "otomatis"
+          - "pinggy"
+          - "bore"
+          - "ngrok"
+      win10:
+        description: "Tweak tampilan Windows 10 (Server Manager mati, personalisasi, wallpaper, label)"
+        required: false
+        default: "ya"
+        type: choice
+        options:
+          - "ya"
+          - "tidak"
+      xydesk:
+        description: "Host setup XyDesk Remote (AVC444 + ClearType + multi-session + audio/mic + UDP 4433)"
+        required: false
+        default: "ya"
+        type: choice
+        options:
+          - "ya"
+          - "tidak"
+      ekstra:
+        description: "Ekstra otomatis: Lightshot + wallpaper + taskbar translucent"
+        required: false
+        default: "ya"
+        type: choice
+        options:
+          - "ya"
+          - "tidak"
+      wallpaper_url:
+        description: "(OPSIONAL) URL wallpaper sendiri (jpg/png/bmp). Kosong = pakai assets/wallpaper*.jpg"
+        required: false
+        default: ""
+        type: string
+      rd_server:
+        description: "(LANJUTAN) Server RustDesk sendiri/terdekat, mis: rs-sg.rustdesk.com. Kosong = server publik bawaan"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+# Satu sesi aktif. Run kedua antre, bukan barengan.
+concurrency:
+  group: xyrdp
+  cancel-in-progress: false
+
+jobs:
+  rdp:
+    # windows-2022 = Server 2022 (UI/kernel Windows 10 21H2). Jangan pakai
+    # windows-latest: sejak Juni 2026 label itu = Windows Server 2025 (UI Win11).
+    runs-on: windows-2022
+    # Batas keras job runner hosted = 360 menit. Jangan naikkan.
+    timeout-minutes: 360
+
+    env:
+      DUR: ${{ inputs.durasi_menit }}
+      HOSTNAME: ${{ inputs.hostname }}
+      AKSES: ${{ inputs.akses }}
+      TUNNEL_PROVIDER: ${{ inputs.tunnel_provider }}
+      WIN10: ${{ inputs.win10 }}
+      XYDESK: ${{ inputs.xydesk }}
+      EXTRAS: ${{ inputs.ekstra }}
+      WALLPAPER_URL: ${{ inputs.wallpaper_url }}
+      RD_SERVER: ${{ inputs.rd_server }}
+      RDP_USER: xyadmin
+      RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+      # ngrok (opsional): akun gratis -> authtoken -> secret repo. Kosong = pakai bore.pub
+      NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+      # Tailscale: jalur akses paling andal dari runner GitHub (IP 100.x).
+      # Dipakai kalau input akses = tailscale / semua (tidak dipakai di default).
+      TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+      # PAT scope repo — buat hapus run lama (opsional; kosong = cleanup dilewati)
+      CLEANUP_TOKEN: ${{ secrets.CLEANUP_TOKEN }}
+      KEEP_RUNS: "3"
+      # NB: runner >=2.3xx tidak lagi inject GITHUB_TOKEN ke env langkah;
+      # harus dieksplisitkan supaya publish-status.ps1 bisa push.
+      GITHUB_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Info lingkungan (OS + versi)
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host "[XyRDP] OS runner : $($os.Caption) build $($os.Version)"
+          Write-Host "[XyRDP] Catatan    : UI/kernel sama dengan Windows 10 21H2; tweak Win10 dijalankan terpisah"
+
+      - name: Setup dasar (user admin + RDP 3389)
+        timeout-minutes: 15
+        shell: pwsh
+        run: ./scripts/setup-rdp.ps1
+
+      - name: Tweak tampilan Windows 10 (Server Manager, personalisasi, wallpaper)
+        if: ${{ inputs.win10 != 'tidak' }}
+        timeout-minutes: 15
+        shell: pwsh
+        run: ./scripts/setup-win10.ps1
+
+      - name: Host setup XyDesk Remote (AVC444 + ClearType + audio/mic + UDP 4433)
+        if: ${{ inputs.xydesk != 'tidak' }}
+        timeout-minutes: 10
+        shell: pwsh
+        run: ./scripts/setup-xydesk.ps1
+
+      - name: Setup ekstra (Lightshot + wallpaper + taskbar translucent)
+        if: ${{ inputs.ekstra != 'tidak' }}
+        timeout-minutes: 20
+        shell: pwsh
+        run: ./scripts/setup-extras.ps1
+
+      - name: Setup akses (RustDesk + tunnel RDP) — tanpa Tailscale
+        timeout-minutes: 25
+        shell: pwsh
+        run: ./scripts/setup-akses.ps1
+
+      - name: Publish status ke branch 'status'
+        continue-on-error: true
+        timeout-minutes: 10
+        shell: pwsh
+        run: ./scripts/publish-status.ps1 -Active $true
+
+      - name: Tahan sesi sampai durasi habis
+        shell: pwsh
+        run: ./scripts/keepalive.ps1
+
+      - name: Finalize (matikan akses, bersihkan status, hapus run lama)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
+          ./scripts/publish-status.ps1 -Active $false
+          ./scripts/finalize-rdp.ps1
+          ./scripts/cleanup-actions.ps1
