@@ -1,0 +1,11 @@
+{
+  "lightshot": true,
+  "translucent": false,
+  "translucent_mode": "acrylic",
+  "wallpaper": true,
+  "wallpaper_file": "wallpaper-win10.jpg",
+  "win10_look": true,
+  "win10_badge": true,
+  "win10_wallpaper": true,
+  "xydesk_host": true
+}
