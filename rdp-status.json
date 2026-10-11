@@ -1,0 +1,88 @@
+{
+  "active": false,
+  "hostname": "xyrdp-gpu-64",
+  "os": "Microsoft Windows Server 2022 Datacenter",
+  "os_build": "10.0.20348",
+  "os_style": "Windows 10 look",
+  "rdp_port": 3389,
+  "rdp_user": "xyadmin",
+  "rdp_listen": ":::3389 (svchost) | 0.0.0.0:3389 (svchost) + handshake ok via 127.0.0.1",
+  "rdp_denyts": true,
+  "started_at": "2026-10-04T02:27:40Z",
+  "expires_at": "2026-10-04T02:42:40Z",
+  "duration_menit": 15,
+  "run_id": "37171107081",
+  "run_number": "64",
+  "run_url": "https://github.com/xykal/XyRDP/actions/runs/37171107081",
+  "mode": "bersih+win10",
+  "win10": {
+    "look": "ok",
+    "badge": "ok",
+    "wallpaper": "ok",
+    "search": "ok",
+    "os": "Microsoft Windows Server 2022 Datacenter",
+    "note": "Tampilan Windows 10 (UI Windows Server 2022 = kernel/UI Windows 10 21H2)"
+  },
+  "xydesk": {
+    "host": "ok",
+    "denyts": "ok",
+    "multisession": "ok",
+    "avc444": "ok",
+    "fontsmoothing": "ok (ClearType profil Default)",
+    "audio_out": "ok (fDisableAudio=)",
+    "audio_mic": "ok (fDisableAudioCapture=0)",
+    "firewall": "tcp3389=True udp3389=True udp4433=True",
+    "services": "ok",
+    "rdp_ready": "127.0.0.1 (handshake OK)",
+    "rdp_probe": "awal=True multi=True audio=True grafis=True clear=True fw=True svc=True",
+    "quic_udp4433": "dibuka di VM (tidak lewat tunnel TCP)",
+    "akses": "(menyusul)",
+    "note": "Host siap dipakai klien XyDesk Remote mode Koneksi RDP (Host+Port tunnel). Kunci WinStations\\RDP-Tcp sengaja TIDAK ditulis supaya listener 3389 tidak mati di runner GitHub."
+  },
+  "grafis": {
+    "adapters": "Microsoft Hyper-V Video",
+    "mesa": "26.2.3",
+    "mode": "software",
+    "dir": "C:\\XyRDP\\grafis",
+    "files": "opengl32.dll,libgallium_wgl.dll,vulkan_lvp.dll,vulkan-1.dll",
+    "vulkan": "llvmpipe (LLVM 23.1.2, 256 bits) (PHYSICAL_DEVICE_TYPE_CPU)",
+    "note": "GPU software (CPU): OpenGL 4.6 (llvmpipe) + Vulkan lavapipe + WARP bawaan. Runner GitHub tanpa GPU fisik; 3D berat tetap lambat.",
+    "install": "mesa 26.2.3.0 [Mesa/X.org]",
+    "debug": "",
+    "opengl": "4.6 (Core Profile) Mesa 26.2.3 (git-afe29290a0) | llvmpipe (LLVM 23.1.2, 256 bits) | Mesa",
+    "loader": "vulkan-1.dll 1.4.363.0 (LunarG)"
+  },
+  "akses": {
+    "mode": "tailscale",
+    "rustdesk": {
+      "status": "skip",
+      "service": null,
+      "server": "rs-ny.rustdesk.com / rs-sg.rustdesk.com (server publik RustDesk)",
+      "client": "Unduh app RustDesk (gratis) -> masukkan ID + password",
+      "id": ""
+    },
+    "tailscale": {
+      "status": "ok",
+      "ip": "100.119.130.27",
+      "magicdns": "xyrdp-gpu-64.tail01cd7c.ts.net.",
+      "hostname": "xyrdp-gpu-64",
+      "funnel": "ok",
+      "funnel_addr": "xyrdp-gpu-64.tail01cd7c.ts.net:10000",
+      "funnel_raw": "funnel exit=0 msg=Available on the internet: |-- tcp://xyrdp-gpu-64.tail01cd7c.ts.net:10000 |-- tcp://100.119.130.27:10000 |-- tcp://[fd7a:115c:a1e0::9f39:821c]:10000 |--> tcp://127.0.0.1:3389 Funnel started and running in the background. To disable the proxy, run: tailscale funnel --tcp=10000 off | || status exit=0 msg={ \"TCP\": { \"10000\": { \"TCPForward\": \"127.0.0.1:3389\" } }, \"AllowFunnel\": { \"xyrdp-gpu-64.tail01cd7c.ts.net:10000\": true } } | || cert exit=0 msg=Wrote public cert to xyrdp-gpu-64.tail01cd7c.ts.net.crt Wrote private key to xyrdp-gpu-64.tail01cd7c.ts.net.key |",
+      "note": "Di HP: pasang app Tailscale + login akun yang sama, lalu Host=100.119.130.27 Port=3389 di XyDesk Remote (atau mstsc). Funnel: xyrdp-gpu-64.tail01cd7c.ts.net:10000"
+    },
+    "tunnel": {
+      "status": "skip",
+      "provider": "",
+      "rdp_local": "",
+      "selftest": "",
+      "outside": "",
+      "note2": "",
+      "note": "Isi Host+Port ini di XyDesk Remote (Koneksi RDP) atau mstsc; user xyadmin",
+      "host": "",
+      "port": 0,
+      "address": ""
+    }
+  },
+  "stopped_at": "2026-10-04T02:39:07Z"
+}

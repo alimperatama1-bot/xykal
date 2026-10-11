@@ -1,0 +1,77 @@
+# ============================================================================
+#  setup-rdp.ps1 — MODE DASAR (v2: tanpa Tailscale)
+#  1) buat user admin (Administrators + Remote Desktop Users, password tetap)
+#  2) aktifkan Remote Desktop port 3389 (setting standar Windows)
+#  3) catat info sesi ke out/rdp-status.json (tanpa password)
+#
+#  Akses masuk TIDAK lewat Tailscale lagi:
+#    - RustDesk (relay publik rs-*.rustdesk.com)  -> scripts/setup-akses.ps1
+#    - tunnel TCP ke port 3389 (bore.pub / ngrok) -> scripts/setup-akses.ps1
+#  Port 3389 di VM ini tidak pernah terbuka ke internet (runner GitHub
+#  tidak punya inbound publik); hanya ditembus lewat tunnel/RustDesk.
+# ============================================================================
+
+$XyTag = 'XyRDP:rdp'
+. "$PSScriptRoot/lib-common.ps1"
+
+# ---------- 0. Validasi ----------
+if (-not $env:RDP_PASSWORD -or $env:RDP_PASSWORD.Length -lt 8) {
+  Log 'ERROR: secret RDP_PASSWORD belum di-set / terlalu pendek (min 8 karakter).'; exit 1
+}
+$dur = [int]($env:DUR -replace '\D', ''); if ($dur -lt 10) { $dur = 360 }; if ($dur -gt 355) { $dur = 355 }
+$u = if ($env:RDP_USER) { $env:RDP_USER } else { 'xyadmin' }
+$hostBase = ($env:HOSTNAME -replace '[^a-zA-Z0-9-]', '').ToLower().Trim('-'); if (-not $hostBase) { $hostBase = 'xyrdp' }
+if ($hostBase.Length -gt 30) { $hostBase = $hostBase.Substring(0, 30) }
+$hostName = "$hostBase-$env:GITHUB_RUN_NUMBER"
+
+$os = try { (Get-CimInstance Win32_OperatingSystem) } catch { $null }
+$osName = if ($os) { $os.Caption } else { 'Windows' }
+$osBuild = if ($os) { "$($os.Version)" } else { '' }
+Log "mode dasar | hostname $hostName | durasi $dur menit | user $u | OS $osName ($osBuild)"
+
+# ---------- 1. User admin (akses penuh, password tetap) ----------
+$sp = ConvertTo-SecureString $env:RDP_PASSWORD -AsPlainText -Force
+if (Get-LocalUser -Name $u -ErrorAction SilentlyContinue) { Remove-LocalUser -Name $u }
+New-LocalUser -Name $u -Password $sp -FullName 'XyRDP Admin' -PasswordNeverExpires -AccountNeverExpires -Description 'XyRDP remote user' | Out-Null
+Add-LocalGroupMember -Group 'Administrators'         -Member $u -ErrorAction SilentlyContinue
+Add-LocalGroupMember -Group 'Remote Desktop Users'   -Member $u -ErrorAction SilentlyContinue
+# token admin penuh untuk login jaringan/RDP (bagian dari "akses admin", bukan tweak)
+reg add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /f | Out-Null
+Log "user '$u' siap: Administrators + Remote Desktop Users, password tidak expire"
+
+# ---------- 2. RDP standar ----------
+Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+Enable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue | Out-Null
+# pastikan layanan RDP jalan
+foreach ($svc in @('TermService')) {
+  try { Set-Service -Name $svc -StartupType Automatic -ErrorAction SilentlyContinue; Start-Service -Name $svc -ErrorAction SilentlyContinue } catch {}
+}
+Log 'RDP aktif di port 3389 (NLA default Windows). Tidak ada port publik di VM ini — akses lewat RustDesk/tunnel.'
+
+# ---------- 3. Status (tanpa password) ----------
+$now = Get-Date
+$status = [ordered]@{
+  active         = $true
+  hostname       = $hostName
+  os             = $osName
+  os_build       = $osBuild
+  os_style       = 'Windows 10 look'
+  rdp_port       = 3389
+  rdp_user       = $u
+  started_at     = $now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+  expires_at     = $now.AddMinutes($dur).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+  duration_menit = $dur
+  run_id         = $env:GITHUB_RUN_ID
+  run_number     = $env:GITHUB_RUN_NUMBER
+  run_url        = "https://github.com/$($env:GITHUB_REPOSITORY)/actions/runs/$($env:GITHUB_RUN_ID)"
+  mode           = 'bersih+win10'
+  akses          = @{ mode = if ($env:AKSES) { $env:AKSES } else { 'keduanya' }; rustdesk = @{ status = 'pending' }; tunnel = @{ status = 'pending' } }
+}
+$outDir = Join-Path (Get-Workspace) 'out'
+New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+$status | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 -Path (Join-Path $outDir 'rdp-status.json')
+$now.ToString('s') | Set-Content -Path (Join-Path $outDir 'started.txt')
+$status | ConvertTo-Json -Depth 8 | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+
+Log "SESI DASAR SIAP — user $u, port 3389. Lanjut: setup akses (RustDesk/tunnel)."
+exit 0
